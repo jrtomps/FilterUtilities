@@ -20,20 +20,13 @@
 
 #include <CFilter.h>
 #include <iostream>
+#include <algorithm>
 #include <DataFormat.h>
 #include <CRingItemFactory.h>
 #include "CSourceIDSelector.h"
 
+using namespace std;
 
-/**! \class CSourceIDSelector
-    Here is a sample implementation of a filter to append a reversed copy of the
-    data in physics event to its body. This is for illustration purposes.
-
-    See the documentation for the CFilter base class for the virtually declared 
-    methods available for dealing with non-physics events. The user has access 
-    to all of the different ring item types. In fact, it is not necessary for 
-    the user to return the same type of ring item from method as it received. 
-*/
 CSourceIDSelector::CSourceIDSelector(std::vector<uint32_t> sourceIds) 
   : m_whiteList(sourceIds)
 {
@@ -43,25 +36,30 @@ CSourceIDSelector::~CSourceIDSelector()
 {
 }
 
-    // handle the physics events 
-CRingItem* CSourceIDSelector::handlePhysicsEventItem(CPhysicsEventItem* pItem) 
-{
-  // return the original item
-  return 0; 
-}
+///////////////////////////////////////////////////////////////////////////////
+///
+//  Begin intelligent handlers
 
-    // handle the physics events 
 CRingItem* CSourceIDSelector::handleStateChangeItem(CRingStateChangeItem* pItem) 
 {
-  return 0;
+  return processItem(pItem);
 }
 
-// handle the physics events 
 CRingItem* CSourceIDSelector::handleScalerItem(CRingScalerItem* pItem) 
+{
+  return processItem(pItem);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// BEGIN UTILITY METHODS
+
+
+CRingItem* CSourceIDSelector::processItem(CRingItem* pItem) 
 {
   // We will only deal with the toplevel ring item source id.
   
-  bool targetNoBodyHeader = m_whiteList.size();
+  bool targetNoBodyHeader = (m_whiteList.size()==0);
 
   CRingItem* pItemToReturn = 0;
   if (targetNoBodyHeader) {
@@ -72,44 +70,29 @@ CRingItem* CSourceIDSelector::handleScalerItem(CRingScalerItem* pItem)
 
   // return the original item
   return pItemToReturn; 
+
 }
 
-CRingItem* CSourceIDSelector::handleTextItem(CRingTextItem* pItem) 
-{
-  return 0; 
-}
-
-CRingItem* CSourceIDSelector::handlePhysicsEventCountItem(CRingPhysicsEventCountItem* pItem) 
-{
-  // return the original item
-  return 0; 
-}
-
-CRingItem* CSourceIDSelector::handleFragmentItem(CRingFragmentItem* pItem) 
-{
-  // return the original item
-  return 0; 
-}
-
-/*!
-* Sets the 
-*/
+// Determine whether or not the id is one that we care about
 bool CSourceIDSelector::isGoodSourceId(uint32_t id) 
 {
     vector<uint32_t>::iterator result;
     result = find(m_whiteList.begin(), m_whiteList.end(), id);
 
+    // Return whether the item was in the list
     return (result != m_whiteList.end());
 }
 
-
+// figure out what to do when the list of source ids is non-empty
 CRingItem* CSourceIDSelector::selectSourceIds(CRingItem* pItem) 
 {
   CRingItem* pItemToReturn=pItem;
 
+  
   if (pItem->hasBodyHeader()) {
-
     uint32_t id = pItem->getSourceId();
+
+    // we care now to see if it is a good id
     if (isGoodSourceId(id)) {
       pItemToReturn = pItem;
     } else {
@@ -117,14 +100,13 @@ CRingItem* CSourceIDSelector::selectSourceIds(CRingItem* pItem)
     }
      
 
-  } else {
+  } else { // no body header is automatically bad
     pItemToReturn=0;
   }
 
   return pItemToReturn;
 
 }
-
 
 /*! Only send on ring items that have no body header
 *
@@ -147,3 +129,32 @@ CRingItem* CSourceIDSelector::selectNoBodyHeader(CRingItem* pItem)
 
 }
 
+///////////////////////////////////////////////////////////////////
+//
+// BEGIN UNINTELLIGENT HANDLERS THAT RETURN NULL
+
+
+// handle the physics events 
+CRingItem* CSourceIDSelector::handlePhysicsEventItem(CPhysicsEventItem* pItem) 
+{
+  // return the original item
+  return 0; 
+}
+
+CRingItem* CSourceIDSelector::handleTextItem(CRingTextItem* pItem) 
+{
+  return 0; 
+}
+
+CRingItem* 
+CSourceIDSelector::handlePhysicsEventCountItem(CRingPhysicsEventCountItem* pItem) 
+{
+  // return the original item
+  return 0; 
+}
+
+CRingItem* CSourceIDSelector::handleFragmentItem(CRingFragmentItem* pItem) 
+{
+  // return the original item
+  return 0; 
+}
